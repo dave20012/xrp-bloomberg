@@ -1,7 +1,7 @@
 import argparse
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -36,7 +36,7 @@ class NewsWorker:
                     url=article.get("url", ""),
                     tag=tag,
                     summary=article.get("summary", ""),
-                    published_at=article.get("published_at", datetime.utcnow()),
+                    published_at=article.get("published_at", datetime.now(timezone.utc)),
                 )
                 db.add(record)
                 enriched.append(
