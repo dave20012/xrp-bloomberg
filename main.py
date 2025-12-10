@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 import streamlit as st
@@ -39,7 +39,8 @@ def render_flow_section(flows_snapshot):
     if df.empty:
         st.info("No flow data available yet.")
         return
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='ISO8601', utc=True, errors='coerce')
+    df = df.dropna(subset=['timestamp'])
     inflow = df[df['direction'] == 'inflow']['volume'].sum()
     outflow = df[df['direction'] == 'outflow']['volume'].sum()
     st.metric("Inflow Volume", f"{inflow:,.0f}")
@@ -91,7 +92,8 @@ def render_volume_table(flows_snapshot):
     if not ohlcv:
         return
     df = pd.DataFrame(ohlcv)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='ISO8601', utc=True, errors='coerce')
+    df = df.dropna(subset=['timestamp'])
     st.dataframe(df.tail(20).set_index('timestamp'))
 
 
@@ -116,7 +118,7 @@ def main():
     st.subheader("Recent OHLCV", anchor=False)
     render_volume_table(flows_snapshot)
 
-    st.caption(f"Last updated: {datetime.utcnow().isoformat()} UTC")
+    st.caption(f"Last updated: {datetime.now(timezone.utc).isoformat()} UTC")
 
 
 if __name__ == "__main__":

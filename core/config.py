@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     binance_api_secret: str | None = None
     news_api_key: str | None = None
     hf_token: str | None = None
+    hf_model: str = "cardiffnlp/twitter-roberta-base-sentiment-latest"
     cryptocompare_api_key: str | None = None
     deepseek_api_key: str | None = None
     database_url: str
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
         'binance_api_secret',
         'news_api_key',
         'hf_token',
+        'hf_model',
         'cryptocompare_api_key',
         'deepseek_api_key',
         pre=True,
