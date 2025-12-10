@@ -11,7 +11,7 @@ from core.utils import retry
 logger = logging.getLogger(__name__)
 
 HF_API_BASE = "https://api-inference.huggingface.co/models"
-MODEL_NAME = "distilbert-base-uncased"
+MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
 
 
 class HFClient:

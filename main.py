@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 import streamlit as st
@@ -116,7 +116,7 @@ def main():
     st.subheader("Recent OHLCV", anchor=False)
     render_volume_table(flows_snapshot)
 
-    st.caption(f"Last updated: {datetime.utcnow().isoformat()} UTC")
+    st.caption(f"Last updated: {datetime.now(timezone.utc).isoformat()} UTC")
 
 
 if __name__ == "__main__":

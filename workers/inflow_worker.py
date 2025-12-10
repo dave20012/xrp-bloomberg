@@ -1,7 +1,7 @@
 import argparse
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -38,7 +38,7 @@ class InflowWorker:
                 "flows": flows_data,
                 "ohlcv": ohlcv_data[-50:],
                 "open_interest": oi_value,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             cache_snapshot("flows:latest", snapshot)
         finally:
@@ -53,7 +53,7 @@ class InflowWorker:
                 direction=direction,
                 volume=trade.get("quantity", 0),
                 price=trade.get("price", 0),
-                timestamp=trade.get("timestamp", datetime.utcnow()),
+                timestamp=trade.get("timestamp", datetime.now(timezone.utc)),
             )
             db.add(record)
             flows.append(
@@ -77,7 +77,7 @@ class InflowWorker:
                 low=candle.get("low", 0),
                 close=candle.get("close", 0),
                 volume=candle.get("volume", 0),
-                timestamp=candle.get("time") or candle.get("open_time") or datetime.utcnow(),
+                timestamp=candle.get("time") or candle.get("open_time") or datetime.now(timezone.utc),
             )
             db.add(record)
             candles.append(
@@ -97,7 +97,7 @@ class InflowWorker:
         record = OpenInterestRecord(
             symbol=oi.get("symbol", "XRPUSDT"),
             value=oi.get("openInterest", 0),
-            timestamp=oi.get("timestamp", datetime.utcnow()),
+            timestamp=oi.get("timestamp", datetime.now(timezone.utc)),
         )
         db.add(record)
         db.commit()
