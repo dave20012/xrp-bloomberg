@@ -1,9 +1,15 @@
 import argparse
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 from sqlalchemy.orm import Session
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from core.binance_client import BinanceClient
 from core.cc_client import CryptoCompareClient
