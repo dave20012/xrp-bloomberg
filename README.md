@@ -4,7 +4,8 @@ A production-ready, volume- and flow-centric XRP analytics terminal with derivat
 
 ## Features
 - Streamlit dark dashboard summarizing flow pressure, derivatives posture, anomaly detection, accumulation/distribution, manipulation heuristics, regulatory/news overlays, and a composite risk/health score.
-- Workers for data ingestion, signal computation, and news tagging with Redis caching and PostgreSQL persistence.
+- Geometry + swarm predictive stack that treats market state as a latent field and aggregates many cheap agents into a consensus.
+- Workers for data ingestion, signal computation, news tagging, state vector construction, geometry projection, and swarm aggregation with Redis caching and PostgreSQL persistence.
 - Deterministic offline fallbacks for environments without immediate API connectivity.
 
 ## Environment Variables
@@ -39,6 +40,9 @@ Each worker can run once or loop with an interval:
 python workers/inflow_worker.py --loop --interval 300
 python workers/analytics_worker.py --loop --interval 600
 python workers/news_worker.py --loop --interval 1800
+python workers/state_worker.py --loop --interval 300
+python workers/geometry_worker.py --loop --interval 600
+python workers/swarm_worker.py --loop --interval 600
 ```
 
 ## Scheduler
@@ -76,6 +80,9 @@ pytest
 - `openinterest`: derivatives open interest.
 - `scores`: composite and component scores.
 - `news`: tagged headlines.
+- `market_state_snapshots`: normalized feature vectors and composite axes.
+- `geometry_snapshots`: projected coordinates, motifs, and drift vectors.
+- `swarm_snapshots`: aggregated swarm scores and contributing agents.
 
 ## Security Note
 Environment variables are required for real API calls. No secrets are stored in the repository; placeholders are used throughout the codebase.
