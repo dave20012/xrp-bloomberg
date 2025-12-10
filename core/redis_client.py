@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 from typing import Any, Optional
@@ -7,6 +9,7 @@ import redis
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)
+_CLIENT: redis.Redis | InMemoryRedis | None = None
 
 
 class InMemoryRedis:
@@ -39,7 +42,10 @@ def _build_client():
 
 
 def get_client():
-    return _build_client()
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = _build_client()
+    return _CLIENT
 
 
 def cache_snapshot(key: str, payload: Any, expire: int = 600) -> None:

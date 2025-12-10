@@ -8,14 +8,20 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from workers.analytics_worker import AnalyticsWorker
+from workers.geometry_worker import GeometryWorker
 from workers.inflow_worker import InflowWorker
 from workers.news_worker import NewsWorker
+from workers.state_worker import StateWorker
+from workers.swarm_worker import SwarmWorker
 
 
 def run_cycle() -> None:
     InflowWorker().run_once()
     AnalyticsWorker().run_once()
     NewsWorker().run_once()
+    StateWorker().run_once()
+    GeometryWorker().run_once()
+    SwarmWorker().run_once()
 
 
 def parse_args() -> argparse.Namespace:
