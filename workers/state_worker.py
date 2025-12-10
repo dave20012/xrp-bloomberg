@@ -1,91 +1,64 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT))
+
 import argparse
 import json
-import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 from sqlalchemy.orm import Session
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from core.db import (
-    FlowRecord,
-    MarketStateSnapshot,
-    OHLCVRecord,
-    OpenInterestRecord,
-    ScoreRecord,
-    SessionLocal,
-    create_tables,
-)
+from core.db import MarketStateSnapshot, SessionLocal, create_tables
 from core.redis_client import cache_snapshot, get_snapshot
 from core.state_space import build_market_state
 
 
 class StateWorker:
-    """Builds normalized market state vectors from persisted data."""
+    def _load_flows(self, db: Session, limit: int = 100):
+        rows = db.query(MarketStateSnapshot).order_by(MarketStateSnapshot.timestamp.desc()).limit(limit)
+        return rows
 
-    def _latest_flows(self, db: Session) -> List[FlowRecord]:
-        return (
-            db.query(FlowRecord)
-            .order_by(FlowRecord.timestamp.desc())
-            .limit(200)
-            .all()
-        )
+    def _load_signals(self):
+        return get_snapshot("scores:latest")
 
-    def _latest_ohlcv(self, db: Session) -> List[OHLCVRecord]:
-        return (
-            db.query(OHLCVRecord)
-            .order_by(OHLCVRecord.timestamp.desc())
-            .limit(200)
-            .all()
-        )
+    def _load_news(self):
+        return get_snapshot("news:latest")
 
-    def _latest_open_interest(self, db: Session) -> OpenInterestRecord | None:
-        return db.query(OpenInterestRecord).order_by(OpenInterestRecord.timestamp.desc()).first()
-
-    def _latest_score(self, db: Session) -> ScoreRecord | None:
-        return db.query(ScoreRecord).order_by(ScoreRecord.timestamp.desc()).first()
+    def _load_flows_snapshot(self):
+        return get_snapshot("flows:latest")
 
     def _raw_inputs_from_sources(self, db: Session) -> Dict[str, float]:
-        flows = self._latest_flows(db)
-        ohlcv = self._latest_ohlcv(db)
-        open_interest = self._latest_open_interest(db)
-        score = self._latest_score(db)
+        flows_snapshot = self._load_flows_snapshot() or {}
+        flows = flows_snapshot.get("flows", [])
+        ohlcv = flows_snapshot.get("ohlcv", [])
+        open_interest = flows_snapshot.get("open_interest")
 
-        price = ohlcv[0].close if ohlcv else 0.0
-        prev_price = ohlcv[1].close if len(ohlcv) > 1 else price
-        returns = (price - prev_price) / prev_price if prev_price else 0.0
+        signals = self._load_signals() or {}
+        headlines = self._load_news() or []
+        headline_count = len(headlines)
 
-        volumes = [c.volume for c in ohlcv[:20]] if ohlcv else [0.0]
-        realized_vol = float((sum((v - sum(volumes) / len(volumes)) ** 2 for v in volumes) / len(volumes)) ** 0.5)
-
-        inflow = sum(f.volume for f in flows if f.direction == "inflow")
-        outflow = sum(f.volume for f in flows if f.direction == "outflow")
-        net_flow = inflow - outflow
-
-        headline_snapshot = get_snapshot("news:latest") or []
-        headline_count = float(len(headline_snapshot))
-
-        return {
-            "spot_price": price,
-            "returns": returns,
-            "realized_vol": realized_vol,
-            "net_flow": net_flow,
-            "exchange_concentration": 0.0,
-            "stablecoin_rotation": 0.0,
-            "open_interest": float(open_interest.value) if open_interest else 0.0,
+        volumes = [flow["volume"] for flow in flows if flow.get("direction") == "inflow"]
+        raw_inputs: Dict[str, float] = {
+            "spot_price": float(ohlcv[-1]["close"]) if ohlcv else 0.0,
+            "returns": float(ohlcv[-1]["close"] - ohlcv[-2]["close"]) if len(ohlcv) >= 2 else 0.0,
+            "realized_vol": float(open_interest.get("value", 0.0)) if open_interest else 0.0,
+            "net_flow": float(sum(volumes)) if volumes else 0.0,
+            "exchange_concentration": float(signals.get("flow_pressure", 0.0)),
+            "stablecoin_rotation": float(signals.get("accumulation", 0.0)),
+            "open_interest": float(open_interest.get("value", 0.0)) if open_interest else 0.0,
             "funding_skew": 0.0,
             "perp_basis": 0.0,
             "orderbook_imbalance": 0.0,
             "aggressive_volume": float(volumes[0]) if volumes else 0.0,
-            "headline_risk": float(score.anomaly) if score else 0.0,
+            "headline_risk": float(signals.get("anomaly", 0.0)) if signals else 0.0,
             "headline_count": headline_count,
             "headline_recency": 1.0 if headline_count else 0.0,
         }
+        return raw_inputs
 
     def run_once(self) -> None:
         create_tables()
@@ -97,7 +70,7 @@ class StateWorker:
 
             record = MarketStateSnapshot(
                 timestamp=now,
-                state_vector=json.dumps(state.vector),
+                state_vector=json.dumps(state.vector.tolist()),
                 composite_axes=json.dumps(state.composite_axes),
             )
             db.add(record)

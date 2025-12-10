@@ -1,14 +1,14 @@
-import argparse
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy.orm import Session
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT))
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+import argparse
+import time
+from datetime import datetime
+
+from sqlalchemy.orm import Session
 
 from core.db import OHLCVRecord, OpenInterestRecord, ScoreRecord, SessionLocal, create_tables
 from core.redis_client import cache_snapshot, get_snapshot
