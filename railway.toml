@@ -1,4 +1,0 @@
-[build]
-builder = "NIXPACKS"
-buildCommand = ""
-pythonVersion = "3.11"
