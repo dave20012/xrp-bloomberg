@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+import pandas as pd
 import streamlit as st
 
 from core.redis_client import get_snapshot
@@ -34,18 +35,16 @@ def render_header():
 def render_flow_section(flows_snapshot):
     st.subheader("Exchange Inflow/Outflow Pressure", anchor=False)
     flows = flows_snapshot.get("flows", [])
-    if not flows:
+    df = pd.DataFrame(flows)
+    if df.empty:
         st.info("No flow data available yet.")
         return
-    inflow = sum(item.get("volume", 0) for item in flows if item.get("direction") == "inflow")
-    outflow = sum(item.get("volume", 0) for item in flows if item.get("direction") == "outflow")
-    chart_data = {
-        "timestamp": [item.get("timestamp") for item in flows],
-        "volume": [item.get("volume", 0) for item in flows],
-    }
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    inflow = df[df['direction'] == 'inflow']['volume'].sum()
+    outflow = df[df['direction'] == 'outflow']['volume'].sum()
     st.metric("Inflow Volume", f"{inflow:,.0f}")
     st.metric("Outflow Volume", f"{outflow:,.0f}")
-    st.line_chart(chart_data, x="timestamp", y="volume")
+    st.line_chart(df.set_index('timestamp')[['volume']])
 
 
 def render_derivatives(scores_snapshot):
@@ -91,21 +90,9 @@ def render_volume_table(flows_snapshot):
     ohlcv = flows_snapshot.get("ohlcv", [])
     if not ohlcv:
         return
-    # Show the most recent 20 rows preserving timestamp order
-    latest = ohlcv[-20:]
-    formatted_rows = []
-    for row in latest:
-        formatted_rows.append(
-            {
-                "timestamp": row.get("timestamp"),
-                "open": row.get("open"),
-                "high": row.get("high"),
-                "low": row.get("low"),
-                "close": row.get("close"),
-                "volume": row.get("volume"),
-            }
-        )
-    st.dataframe(formatted_rows, hide_index=True)
+    df = pd.DataFrame(ohlcv)
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    st.dataframe(df.tail(20).set_index('timestamp'))
 
 
 def main():
