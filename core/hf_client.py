@@ -12,7 +12,7 @@ from core.utils import retry
 logger = logging.getLogger(__name__)
 
 HF_API_BASE = "https://api-inference.huggingface.co/models"
-DEFAULT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
 
 
 class HFClient:
