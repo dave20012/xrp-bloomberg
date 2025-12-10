@@ -22,7 +22,7 @@ from core.db import (
     create_tables,
 )
 from core.redis_client import cache_snapshot, get_snapshot
-from core.state_space import build_state_vector
+from core.state_space import build_market_state
 
 
 class StateWorker:
@@ -93,7 +93,7 @@ class StateWorker:
         try:
             raw_inputs = self._raw_inputs_from_sources(db)
             now = datetime.now(timezone.utc)
-            state = build_state_vector(timestamp=now, raw_inputs=raw_inputs)
+            state = build_market_state(timestamp=now, raw_inputs=raw_inputs)
 
             record = MarketStateSnapshot(
                 timestamp=now,

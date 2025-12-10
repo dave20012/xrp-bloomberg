@@ -4,7 +4,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -15,35 +15,34 @@ if str(PROJECT_ROOT) not in sys.path:
 from core.db import GeometrySnapshotRecord, MarketStateSnapshot, SessionLocal, create_tables
 from core.geometry import GeometryModel
 from core.redis_client import cache_snapshot
-from core.state_space import MarketState
+from core.state_space import N_COMPONENTS, N_FEATURES, build_state_vector
 
 
 class GeometryWorker:
     """Projects market states into the geometry space and persists snapshots."""
 
     def __init__(self) -> None:
-        self.model = GeometryModel()
+        self.model = GeometryModel(n_components=N_COMPONENTS, n_features=N_FEATURES)
 
-    def _fetch_state_history(self, db: Session, limit: int = 500) -> List[MarketState]:
+    def _load_vector(self, raw_vector: Sequence[float]) -> Sequence[float] | None:
+        try:
+            return build_state_vector(raw_vector)
+        except ValueError:
+            return None
+
+    def _fetch_state_history(self, db: Session, limit: int = 500) -> List[Sequence[float]]:
         rows = (
             db.query(MarketStateSnapshot)
             .order_by(MarketStateSnapshot.timestamp.desc())
             .limit(limit)
             .all()
         )
-        history: List[MarketState] = []
+        history: List[Sequence[float]] = []
         for row in reversed(rows):
-            vector = json.loads(row.state_vector) if row.state_vector else []
-            composite = json.loads(row.composite_axes) if row.composite_axes else {}
-            history.append(
-                MarketState(
-                    timestamp=row.timestamp,
-                    raw_features={},
-                    normalized_features={},
-                    composite_axes=composite,
-                    vector=[float(v) for v in vector],
-                )
-            )
+            raw_vector = json.loads(row.state_vector) if row.state_vector else []
+            vector = self._load_vector(raw_vector)
+            if vector is not None:
+                history.append(vector)
         return history
 
     def run_once(self) -> None:
@@ -55,8 +54,12 @@ class GeometryWorker:
                 cache_snapshot("geometry:latest", {})
                 return
 
+            current_state = history[-1] if history and len(history[-1]) == N_FEATURES else None
+            if current_state is None:
+                cache_snapshot("geometry:latest", {})
+                return
+
             self.model.fit(history)
-            current_state = history[-1]
             snapshot = self.model.snapshot(current_state, history)
 
             record = GeometrySnapshotRecord(

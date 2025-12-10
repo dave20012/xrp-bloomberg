@@ -39,4 +39,12 @@ def evaluate_swarm(snapshots: List[SwarmSnapshot], realized_returns: List[float]
     return performances
 
 
-__all__ = ["compute_hit_rate", "evaluate_swarm", "SwarmPerformance"]
+__all__ = ["compute_hit_rate", "evaluate_swarm", "SwarmPerformance", "run_backtests"]
+
+
+def run_backtests() -> None:
+    """Placeholder entrypoint for batch backtest execution."""
+    # Future implementations can load historical snapshots and realized returns
+    # to populate ``evaluate_swarm``. For now we avoid raising to keep the
+    # worker callable.
+    return None
