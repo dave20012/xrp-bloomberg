@@ -14,7 +14,9 @@ from typing import Dict, Iterable, List, Mapping, Sequence
 import numpy as np
 
 N_FEATURES = 18
-N_COMPONENTS = 2
+N_GEOMETRY_COMPONENTS = 2
+# Backwards compatibility alias.
+N_COMPONENTS = N_GEOMETRY_COMPONENTS
 
 RAW_FEATURE_KEYS: List[str] = [
     "spot_price",
@@ -45,7 +47,7 @@ def _validate_vector(vector: np.ndarray) -> np.ndarray:
     vector = np.asarray(vector, dtype=float).reshape(-1)
     if vector.size != N_FEATURES:
         raise ValueError(f"State vector must have {N_FEATURES} features; received {vector.size}.")
-    return vector
+    return vector.reshape((N_FEATURES,))
 
 
 @dataclass
@@ -190,6 +192,7 @@ __all__ = [
     "MarketState",
     "N_COMPONENTS",
     "N_FEATURES",
+    "N_GEOMETRY_COMPONENTS",
     "build_market_state",
     "build_state_vector",
     "load_state_matrix",

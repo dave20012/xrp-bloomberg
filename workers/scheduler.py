@@ -1,44 +1,51 @@
-import argparse
 import sys
-import time
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT))
 
-from workers.analytics_worker import AnalyticsWorker
-from workers.geometry_worker import GeometryWorker
-from workers.inflow_worker import InflowWorker
-from workers.news_worker import NewsWorker
-from workers.state_worker import StateWorker
-from workers.swarm_worker import SwarmWorker
+import argparse
+import subprocess
+import time
+
+WORKERS = [
+    "inflow_worker.py",
+    "state_worker.py",
+    "analytics_worker.py",
+    "geometry_worker.py",
+    "news_worker.py",
+    "swarm_worker.py",
+]
 
 
-def run_cycle() -> None:
-    InflowWorker().run_once()
-    AnalyticsWorker().run_once()
-    NewsWorker().run_once()
-    StateWorker().run_once()
-    GeometryWorker().run_once()
-    SwarmWorker().run_once()
+class Scheduler:
+    def __init__(self, interval: int) -> None:
+        self.interval = interval
+
+    def run_once(self) -> None:
+        for worker in WORKERS:
+            subprocess.Popen(["python", f"workers/{worker}"])
+
+    def run_loop(self) -> None:
+        while True:
+            self.run_once()
+            time.sleep(self.interval)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Scheduler for XRP analytics")
-    parser.add_argument("--loop", action="store_true", help="Loop execution")
-    parser.add_argument("--interval", type=int, default=900, help="Loop interval seconds")
+    parser = argparse.ArgumentParser(description="Worker scheduler")
+    parser.add_argument("--interval", type=int, default=600, help="Interval between launches")
+    parser.add_argument("--loop", action="store_true", help="Run scheduler in a loop")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    scheduler = Scheduler(interval=args.interval)
     if args.loop:
-        while True:
-            run_cycle()
-            time.sleep(args.interval)
+        scheduler.run_loop()
     else:
-        run_cycle()
+        scheduler.run_once()
 
 
 if __name__ == "__main__":
