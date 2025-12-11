@@ -71,11 +71,19 @@ class GeometryModel:
             self._coords_history = None
             return
 
+        if matrix.shape[1] != self.n_features:
+            raise ValueError(
+                f"Geometry fit expected {self.n_features} features; received {matrix.shape[1]}."
+            )
+
         self._means = matrix.mean(axis=0).astype(float)
         centered = matrix - self._means
         _, _, vt = np.linalg.svd(centered, full_matrices=False)
         components = vt[: self.n_components]
-        assert components.shape == (self.n_components, self.n_features)
+        assert components.shape == (self.n_components, self.n_features), (
+            "Geometry components shape mismatch; expected "
+            f"{(self.n_components, self.n_features)}, got {components.shape}."
+        )
         self._components = components
         self._coords_history = centered @ self._components.T
 
@@ -83,8 +91,13 @@ class GeometryModel:
         vector = self._validate_vector(state_vector)
         if self._components is None or self._means is None:
             return np.zeros((self.n_components,))
-        assert vector.shape == (self.n_features,)
-        assert self._components.shape == (self.n_components, self.n_features)
+        assert vector.shape == (self.n_features,), (
+            f"Transform received vector of shape {vector.shape}, expected {(self.n_features,)}."
+        )
+        assert self._components.shape == (self.n_components, self.n_features), (
+            "Geometry components shape mismatch; expected "
+            f"{(self.n_components, self.n_features)}, got {self._components.shape}."
+        )
         centered = vector - self._means
         return centered @ self._components.T
 
@@ -130,8 +143,13 @@ class GeometryModel:
         if self._components is None or self._means is None:
             return self._zero_snapshot()
 
-        assert state.shape == (self.n_features,)
-        assert self._components.shape == (self.n_components, self.n_features)
+        assert state.shape == (self.n_features,), (
+            f"Snapshot received vector of shape {state.shape}, expected {(self.n_features,)}."
+        )
+        assert self._components.shape == (self.n_components, self.n_features), (
+            "Geometry components shape mismatch; expected "
+            f"{(self.n_components, self.n_features)}, got {self._components.shape}."
+        )
 
         centered = state - self._means
         coords = centered @ self._components.T
