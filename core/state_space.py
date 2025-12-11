@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Mapping, Sequence
+from typing import Dict, Iterable, List, Mapping, Sequence
 
 import numpy as np
 
@@ -47,8 +47,6 @@ def _validate_vector(vector: np.ndarray) -> np.ndarray:
     vector = np.asarray(vector, dtype=float).reshape(-1)
     if vector.size != N_FEATURES:
         raise ValueError(f"State vector must have {N_FEATURES} features; received {vector.size}.")
-    if not np.isfinite(vector).all():
-        raise ValueError("State vector contains non-finite values.")
     return vector.reshape((N_FEATURES,))
 
 
@@ -157,28 +155,6 @@ def build_state_vector(
     return _validate_vector(np.asarray(raw_inputs, dtype=float))
 
 
-def restore_market_state(payload: Mapping[str, Any]) -> MarketState | None:
-    """Rehydrate a :class:`MarketState` from cached dictionaries.
-
-    Falls back to ``None`` if the payload is missing required fields so callers
-    can supply defaults.
-    """
-
-    try:
-        timestamp_raw = payload.get("timestamp")
-        timestamp = (
-            datetime.fromisoformat(timestamp_raw)
-            if isinstance(timestamp_raw, str)
-            else datetime.utcnow()
-        )
-        raw_inputs = payload.get("raw_features")
-        if not isinstance(raw_inputs, Mapping):
-            return None
-        return build_market_state(timestamp=timestamp, raw_inputs=raw_inputs)
-    except Exception:
-        return None
-
-
 def build_market_state(
     timestamp: datetime,
     raw_inputs: Mapping[str, float],
@@ -220,5 +196,4 @@ __all__ = [
     "build_market_state",
     "build_state_vector",
     "load_state_matrix",
-    "restore_market_state",
 ]
