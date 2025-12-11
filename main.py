@@ -24,7 +24,9 @@ def load_snapshots():
     flows = get_snapshot("flows:latest") or {}
     scores = get_snapshot("scores:latest") or {}
     news = get_snapshot("news:latest") or []
-    return flows, scores, news
+    geometry = get_snapshot("geometry:latest") or {}
+    swarm = get_snapshot("swarm:latest") or {}
+    return flows, scores, news, geometry, swarm
 
 
 def render_header():
@@ -97,9 +99,35 @@ def render_volume_table(flows_snapshot):
     st.dataframe(df.tail(20).set_index('timestamp'))
 
 
+def render_geometry(geometry_snapshot):
+    st.subheader("Geometry & Motif", anchor=False)
+    if not geometry_snapshot:
+        st.info("No geometry snapshot yet.")
+        return
+    coords = geometry_snapshot.get("coords", [])
+    motif = geometry_snapshot.get("motif_id")
+    drift = geometry_snapshot.get("local_drift", [])
+    st.metric("Motif", motif or "pending")
+    st.write({"coords": coords, "local_drift": drift})
+
+
+def render_swarm(swarm_snapshot):
+    st.subheader("Swarm Consensus", anchor=False)
+    per_horizon = swarm_snapshot.get("per_horizon") if swarm_snapshot else None
+    if not per_horizon:
+        st.info("Waiting for swarm predictions.")
+        return
+    for horizon, metrics in per_horizon.items():
+        st.metric(
+            f"{horizon} swarm score",
+            f"{metrics.get('swarm_score', 0):.3f}",
+            help=f"Connectome support: {metrics.get('connectome_support', 0):.3f}",
+        )
+
+
 def main():
     render_header()
-    flows_snapshot, scores_snapshot, news_items = load_snapshots()
+    flows_snapshot, scores_snapshot, news_items, geometry_snapshot, swarm_snapshot = load_snapshots()
     scores_snapshot = scores_snapshot or {}
 
     col1, col2 = st.columns(2)
@@ -107,10 +135,12 @@ def main():
         render_flow_section(flows_snapshot)
         render_anomalies(scores_snapshot)
         render_accumulation(scores_snapshot)
+        render_geometry(geometry_snapshot)
     with col2:
         render_derivatives(scores_snapshot)
         render_manipulation(scores_snapshot)
         render_composite(scores_snapshot)
+        render_swarm(swarm_snapshot)
 
     st.divider()
     render_regulatory(news_items)
