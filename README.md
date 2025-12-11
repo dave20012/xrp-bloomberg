@@ -67,9 +67,7 @@ railway service up --name analytics-worker --command "python workers/analytics_w
 railway service up --name news-worker --command "python workers/news_worker.py --loop"
 ```
 
-Ensure all environment variables above are set in Railway. A declarative
-`railway.json` is included if you prefer to provision services via Railway
-IaC instead of individual CLI commands.
+Ensure all environment variables above are set in Railway.
 
 ## Testing
 ```bash
